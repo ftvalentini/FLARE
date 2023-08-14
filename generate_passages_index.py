@@ -3,6 +3,7 @@ that only creates index with ElasticSearch BM25 and makes changes to read
 from tsv instead of json.
 """
 
+import logging
 import csv
 from typing import List, Tuple, Any, Union, Dict, Set, Callable
 import argparse
@@ -13,13 +14,21 @@ import glob
 from tqdm import tqdm
 
 
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+fmt = logging.Formatter("[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s", "%m/%d/%Y %H:%M:%S")
+console = logging.StreamHandler()
+console.setFormatter(fmt)
+logger.addHandler(console)
+
+
 def build_elasticsearch(
     beir_corpus_file_pattern: str,
     index_name: str,
     get_id: Callable = None,
 ):
     beir_corpus_files = glob.glob(beir_corpus_file_pattern)
-    print(f'#files {len(beir_corpus_files)}')
+    logger.info(f'number of files = {len(beir_corpus_files)}')
     from beir.retrieval.search.lexical.elastic_search import ElasticSearch
     config = {
         "hostname": 'localhost',
@@ -34,9 +43,10 @@ def build_elasticsearch(
     es = ElasticSearch(config)
 
     # create index
-    print(f'create index {index_name}')
+    logger.info(f'Deleting index {index_name} if it exists')
     es.delete_index()
     time.sleep(5)
+    logger.info(f'Creating index {index_name}')
     es.create_index()
 
     get_id = get_id or (lambda x: str(x['_id']))
@@ -61,7 +71,13 @@ def build_elasticsearch(
                     yield es_doc
 
     # index
-    progress = tqdm(unit='docs')
+    # compute amount of docs to index based on the number of lines of each file:
+    total_docs = 0
+    for beir_corpus_file in beir_corpus_files:
+        with open(beir_corpus_file) as f:
+            total_docs += sum(1 for line in f) - 1  # skip header
+    progress = tqdm(unit='docs', total=total_docs)
+    logger.info(f'Adding docs to index {index_name}')
     es.bulk_add_to_index(
         generate_actions=generate_actions(),
         progress=progress)
