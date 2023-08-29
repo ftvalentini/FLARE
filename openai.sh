@@ -22,7 +22,7 @@ echo 'output to:' $output
 
 prompt_type=""
 if [[ ${dataset} == '2wikihop' ]]; then
-    input="--input data/2wikimultihopqa/dev_beir"
+    input="--input data/2wikimultihopqa"
     engine=elasticsearch
     index_name=wikipedia_dpr
     fewshot=8
@@ -53,7 +53,7 @@ elif [[ ${dataset} == 'asqa_hint' ]]; then
     max_num_examples=500
     max_generation_len=256
 elif [[ ${dataset} == 'wikiasp' ]]; then
-    input="--input \"data/wikiasp/matched_with_bing_test.500.annotated\""
+    input="--input data/wikiasp"
     engine=bing
     index_name=wikiasp
     fewshot=4
