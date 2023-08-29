@@ -36,7 +36,7 @@ def build_elasticsearch(
         "keys": {"title": "title", "body": "txt"},
         "timeout": 100,
         "retry_on_timeout": True,
-        "maxsize": 24,
+        "maxsize": 24, # parallelism
         "number_of_shards": 'default',
         "language": 'english',
     }

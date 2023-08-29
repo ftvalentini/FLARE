@@ -95,30 +95,36 @@ class BM25:
             queries = self.tokenizer.batch_decode(tokenized, skip_special_tokens=True)
 
         # retrieve
-        results: Dict[str, Dict[str, Tuple[float, str]]] = self.retriever.retrieve(
+        results: Dict[str, Dict[str, Tuple[float, str, str]]] = self.retriever.retrieve(
             None, dict(zip(range(len(queries)), queries)), disable_tqdm=True)
 
         # prepare outputs
         docids: List[str] = []
+        doctitles: List[str] = []
         docs: List[str] = []
         for qid, query in enumerate(queries):
             _docids: List[str] = []
+            _doctitles: List[str] = []
             _docs: List[str] = []
             if qid in results:
-                for did, (score, text) in results[qid].items():
+                for did, (score, title, text) in results[qid].items():
                     _docids.append(did)
+                    _doctitles.append(title)
                     _docs.append(text)
                     if len(_docids) >= topk:
                         break
             if len(_docids) < topk:  # add dummy docs
                 _docids += [get_random_doc_id() for _ in range(topk - len(_docids))]
+                _doctitles += [''] * (topk - len(_doctitles))
                 _docs += [''] * (topk - len(_docs))
             docids.extend(_docids)
+            doctitles.extend(_doctitles)
             docs.extend(_docs)
 
         docids = np.array(docids).reshape(bs, topk)  # (bs, topk)
+        doctitles = np.array(doctitles).reshape(bs, topk)  # (bs, topk)
         docs = np.array(docs).reshape(bs, topk)  # (bs, topk)
-        return docids, docs
+        return docids, doctitles, docs
 
 
 def bm25search_search(self, corpus: Dict[str, Dict[str, str]], queries: Dict[str, str], top_k: int, *args, **kwargs) -> Dict[str, Dict[str, float]]:
@@ -141,8 +147,8 @@ def bm25search_search(self, corpus: Dict[str, Dict[str, str]], queries: Dict[str
             top_hits=top_k)
         for (query_id, hit) in zip(query_ids_batch, results):
             scores = {}
-            for corpus_id, score, text in hit['hits']:
-                scores[corpus_id] = (score, text)
+            for corpus_id, score, title, text in hit['hits']:
+                scores[corpus_id] = (score, title, text)
                 final_results[query_id] = scores
 
     return final_results
@@ -189,9 +195,10 @@ def elasticsearch_lexical_multisearch(self, texts: List[str], top_hits: int, ski
 
         hits = []
         for hit in responses:
-            hits.append((hit["_id"], hit['_score'], hit['_source']['txt']))
+            hits.append((hit["_id"], hit['_score'], hit['_source']['title'], hit['_source']['txt']))
 
         result.append(self.hit_template(es_res=resp, hits=hits))
+
     return result
 
 ElasticSearch.lexical_multisearch = elasticsearch_lexical_multisearch
