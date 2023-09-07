@@ -59,8 +59,9 @@ def build_elasticsearch(
                 next(reader)
                 # read chunks:
                 for row in reader:
-                    # print(f"row: {row}")
-                    doc = {"_id": row[0], "title": row[2], "text": row[1]}
+                    # NOTE we index all chunks as "title | text"
+                    text = row[2] + ' | ' + row[1]
+                    doc = {"_id": row[0], "title": row[2], "text": text}
                     es_doc = {
                         "_id": get_id(doc),
                         "_op_type": "index",
