@@ -26,6 +26,7 @@ def build_elasticsearch(
     beir_corpus_file_pattern: str,
     index_name: str,
     get_id: Callable = None,
+    language: str = 'english',
 ):
     beir_corpus_files = glob.glob(beir_corpus_file_pattern)
     logger.info(f'number of files = {len(beir_corpus_files)}')
@@ -38,7 +39,7 @@ def build_elasticsearch(
         "retry_on_timeout": True,
         "maxsize": 24, # parallelism
         "number_of_shards": 'default',
-        "language": 'english',
+        "language": language,
     }
     es = ElasticSearch(config)
 
@@ -91,6 +92,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, required=True, help='task to perform', choices=[
         'eval', 'build_elasticsearch', 'jsonl_to_keyvalue'])
+    parser.add_argument('--lang', type=str, default='english', help='language')
     parser.add_argument('--inp', type=str, default=None, nargs='+', help='input file')
     parser.add_argument('--dataset', type=str, default='2wikihop', help='input dataset', choices=[
         'strategyqa', '2wikihop', 'wikiasp', 'asqa'])
@@ -112,4 +114,4 @@ if __name__ == '__main__':
         beir_corpus_file_pattern, index_name = args.inp  # 'wikipedia_dpr'
         get_id_default = lambda doc: str(doc['_id'])
         get_id_lm = lambda doc: doc['metadata']['line'] + '.' + str(doc['_id'])
-        build_elasticsearch(beir_corpus_file_pattern, index_name, get_id=get_id_default)
+        build_elasticsearch(beir_corpus_file_pattern, index_name, get_id=get_id_default, language=args.lang)
